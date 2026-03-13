@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crawler Giá Vàng</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 0.9em;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        button {
+            flex: 1;
+            padding: 14px 24px;
+            font-size: 1em;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-preview {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-preview:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-download {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .btn-download:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(245, 87, 108, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result {
+            margin-top: 25px;
+            padding: 15px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .result.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .result.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .data-preview {
+            margin-top: 25px;
+            max-height: 400px;
+            overflow: auto;
+            display: none;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+
+        tr:hover {
+            background: #f5f5f5;
+        }
+
+        .example-urls {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 0.85em;
+        }
+
+        .example-urls strong {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .example-urls a {
+            display: block;
+            color: #667eea;
+            text-decoration: none;
+            margin-bottom: 5px;
+            word-break: break-all;
+        }
+
+        .example-urls a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏆 Crawler Giá Vàng</h1>
+        <p class="subtitle">Nhập URL trang web để lấy dữ liệu giá vàng</p>
+
+        <div class="form-group">
+            <label for="url">URL Trang Web:</label>
+            <input type="text" id="url" placeholder="https://example.com/gia-vang" value="">
+        </div>
+
+        <div class="example-urls">
+            <strong>Ví dụ URL:</strong>
+            <a href="#" onclick="setURL('https://sjc.com.vn/xml/tygiavang.xml'); return false;">SJC - XML</a>
+            <a href="#" onclick="setURL('https://giavang.doji.vn/'); return false;">DOJI</a>
+            <a href="#" onclick="setURL('https://www.pnj.com.vn/blog/gia-vang/'); return false;">PNJ</a>
+        </div>
+
+        <div class="button-group">
+            <button class="btn-preview" onclick="previewData()">👁 Xem trước</button>
+            <button class="btn-download" onclick="downloadCSV()">📥 Tải CSV</button>
+        </div>
+
+        <div class="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 10px; color: #666;">Đang xử lý...</p>
+        </div>
+
+        <div class="result" id="result"></div>
+
+        <div class="data-preview" id="dataPreview"></div>
+    </div>
+
+    <script>
+        function setURL(url) {
+            document.getElementById('url').value = url;
+        }
+
+        function showLoading(show) {
+            document.querySelector('.loading').style.display = show ? 'block' : 'none';
+            document.querySelectorAll('button').forEach(btn => btn.disabled = show);
+        }
+
+        function showResult(message, type) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = message;
+            resultDiv.className = `result ${type}`;
+            resultDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                resultDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        async function previewData() {
+            const url = document.getElementById('url').value.trim();
+            
+            if (!url) {
+                showResult('⚠ Vui lòng nhập URL!', 'error');
+                return;
+            }
+
+            showLoading(true);
+            document.getElementById('dataPreview').style.display = 'none';
+
+            try {
+                const response = await fetch('/api/preview', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: url })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayPreview(data.data);
+                    showResult(`✓ Tìm thấy ${data.data.length} dòng dữ liệu`, 'success');
+                } else {
+                    showResult(`✗ Lỗi: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showResult(`✗ Lỗi kết nối: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function displayPreview(data) {
+            const previewDiv = document.getElementById('dataPreview');
+            
+            if (data.length === 0) {
+                previewDiv.innerHTML = '<p style="text-align: center; color: #999;">Không có dữ liệu</p>';
+                previewDiv.style.display = 'block';
+                return;
+            }
+
+            const headers = Object.keys(data[0]);
+            let tableHTML = '<table><thead><tr>';
+            
+            headers.forEach(header => {
+                tableHTML += `<th>${header}</th>`;
+            });
+            tableHTML += '</tr></thead><tbody>';
+
+            data.forEach(row => {
+                tableHTML += '<tr>';
+                headers.forEach(header => {
+                    tableHTML += `<td>${row[header] || ''}</td>`;
+                });
+                tableHTML += '</tr>';
+            });
+
+            tableHTML += '</tbody></table>';
+            previewDiv.innerHTML = tableHTML;
+            previewDiv.style.display = 'block';
+        }
+
+        async function downloadCSV() {
+            const url = document.getElementById('url').value.trim();
+            
+            if (!url) {
+                showResult('⚠ Vui lòng nhập URL!', 'error');
+                return;
+            }
+
+            showLoading(true);
+
+            try {
+                const response = await fetch('/api/download', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: url })
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const downloadUrl = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = `giavang_${Date.now()}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(downloadUrl);
+                    document.body.removeChild(a);
+                    
+                    showResult('✓ Tải file CSV thành công!', 'success');
+                } else {
+                    const data = await response.json();
+                    showResult(`✗ Lỗi: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showResult(`✗ Lỗi kết nối: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+    </script>
+</body>
+</html>
