@@ -245,22 +245,16 @@
         </div>
 
         <div style="display:flex; gap:8px; margin-top:-15px; margin-bottom:20px; flex-wrap:wrap; align-items:center;">
-            <button type="button" onclick="setQuickRange(7)"  style="flex:none;padding:6px 14px;font-size:0.82em;background:#e9ecef;color:#333;border:1px solid #ced4da;border-radius:20px;cursor:pointer;font-weight:500;text-transform:none;letter-spacing:0;">7 ngày</button>
-            <button type="button" onclick="setQuickRange(30)" style="flex:none;padding:6px 14px;font-size:0.82em;background:#e9ecef;color:#333;border:1px solid #ced4da;border-radius:20px;cursor:pointer;font-weight:500;text-transform:none;letter-spacing:0;">1 tháng</button>
-            <button type="button" onclick="setQuickRange(90)" style="flex:none;padding:6px 14px;font-size:0.82em;background:#e9ecef;color:#333;border:1px solid #ced4da;border-radius:20px;cursor:pointer;font-weight:500;text-transform:none;letter-spacing:0;">3 tháng</button>
-            <button type="button" onclick="setQuickRange(180)"style="flex:none;padding:6px 14px;font-size:0.82em;background:#e9ecef;color:#333;border:1px solid #ced4da;border-radius:20px;cursor:pointer;font-weight:500;text-transform:none;letter-spacing:0;">6 tháng</button>
-            <button type="button" onclick="setQuickRange(365)"style="flex:none;padding:6px 14px;font-size:0.82em;background:#e9ecef;color:#333;border:1px solid #ced4da;border-radius:20px;cursor:pointer;font-weight:500;text-transform:none;letter-spacing:0;">1 năm</button>
+            <button type="button" onclick="setQuickRange(7)"   style="flex:none;padding:6px 14px;font-size:0.82em;background:#e9ecef;color:#333;border:1px solid #ced4da;border-radius:20px;cursor:pointer;font-weight:500;text-transform:none;letter-spacing:0;">7 ngày</button>
+            <button type="button" onclick="setQuickRange(30)"  style="flex:none;padding:6px 14px;font-size:0.82em;background:#e9ecef;color:#333;border:1px solid #ced4da;border-radius:20px;cursor:pointer;font-weight:500;text-transform:none;letter-spacing:0;">1 tháng</button>
+            <button type="button" onclick="setQuickRange(90)"  style="flex:none;padding:6px 14px;font-size:0.82em;background:#e9ecef;color:#333;border:1px solid #ced4da;border-radius:20px;cursor:pointer;font-weight:500;text-transform:none;letter-spacing:0;">3 tháng</button>
+            <button type="button" onclick="setQuickRange(180)" style="flex:none;padding:6px 14px;font-size:0.82em;background:#e9ecef;color:#333;border:1px solid #ced4da;border-radius:20px;cursor:pointer;font-weight:500;text-transform:none;letter-spacing:0;">6 tháng</button>
+            <button type="button" onclick="setQuickRange(365)" style="flex:none;padding:6px 14px;font-size:0.82em;background:#e9ecef;color:#333;border:1px solid #ced4da;border-radius:20px;cursor:pointer;font-weight:500;text-transform:none;letter-spacing:0;">1 năm</button>
+            <button type="button" onclick="setQuickRange(1825)"style="flex:none;padding:6px 14px;font-size:0.82em;background:#e9ecef;color:#333;border:1px solid #ced4da;border-radius:20px;cursor:pointer;font-weight:500;text-transform:none;letter-spacing:0;">5 năm</button>
             <span id="url-count-badge" style="display:none;margin-left:auto;padding:6px 14px;font-size:0.82em;background:#d4edda;color:#155724;border:1px solid #c3e6cb;border-radius:20px;font-weight:600;"></span>
         </div>
 
-        <div class="example-urls">
-            <strong>✅ URL có ngày (hỗ trợ cào theo khoảng thời gian):</strong>
-            <a href="#" onclick="setURL('https://giavang.org/trong-nuoc/sjc/lich-su/2025-03-18.html'); checkUrlPattern(); return false;">giavang.org - SJC lịch sử (có ngày trong URL)</a>
-            <strong style="margin-top:8px; display:block;">⚠️ URL không có ngày (chỉ cào được 1 lần, dữ liệu hiện tại):</strong>
-            <a href="#" onclick="setURL('https://sjc.com.vn/xml/tygiavang.xml'); checkUrlPattern(); return false;">SJC - XML (hiện tại)</a>
-            <a href="#" onclick="setURL('https://giavang.doji.vn/'); checkUrlPattern(); return false;">DOJI (hiện tại)</a>
-            <a href="#" onclick="setURL('https://www.pnj.com.vn/blog/gia-vang/'); checkUrlPattern(); return false;">PNJ (hiện tại)</a>
-        </div>
+
 
         <div class="button-group">
             <button class="btn-preview" onclick="previewData()">👁 Xem trước</button>

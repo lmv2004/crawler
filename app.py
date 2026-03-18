@@ -10,9 +10,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 app = Flask(__name__)
 
 def fetch_gold_data(url):
-    """
-    Hàm fetch dữ liệu từ URL
-    """
     try:
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -31,9 +28,6 @@ def fetch_gold_data(url):
         raise Exception(f"Lỗi khi fetch dữ liệu: {str(e)}")
 
 def parse_xml_data(content):
-    """
-    Parse dữ liệu XML (ví dụ: SJC)
-    """
     soup = BeautifulSoup(content, 'xml')
     data = []
     
@@ -53,13 +47,9 @@ def parse_xml_data(content):
                 text = item.get_text(strip=True)
                 if text:
                     data.append({'tag': item.name, 'value': text})
-    
     return data
 
 def parse_html_data(content, url):
-    """
-    Parse dữ liệu HTML từ các bảng
-    """
     soup = BeautifulSoup(content, 'html.parser')
     data = []
     
@@ -141,10 +131,17 @@ def parse_html_data(content, url):
                     break
             
             if row_data:
+                # Bỏ qua hàng nếu bất kỳ ô nào chứa URL (link breadcrumb, navigation...)
+                has_url = any(
+                    str(v).startswith('http://') or str(v).startswith('https://')
+                    for v in row_data.values()
+                )
+                if has_url:
+                    continue
+
                 date_match = re.search(r'(\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4}|\d{4}/\d{2}/\d{2})', url)
                 if date_match:
                     row_data['Ngày Dữ Liệu'] = date_match.group(1)
-                row_data['URL_Nguồn'] = url
                 data.append(row_data)
     
     # Thêm timestamp cào dữ liệu
@@ -156,34 +153,73 @@ def parse_html_data(content, url):
 def fetch_multiple_urls(urls, max_workers=20):
     """
     Fetch dữ liệu từ nhiều URL cùng lúc sử dụng ThreadPoolExecutor.
-    Bỏ qua các URL không có dữ liệu (ngày nghỉ, thiếu data) thay vì báo lỗi.
+    Bỏ qua các URL không có dữ liệu (ngày nghỉ, thiếu data)
+    - Ngày không có dữ liệu: chèn hàng thông báo thay vì bỏ qua
+    - Ngày có dữ liệu: chèn hàng ngăn cách để phân tách giữa các ngày
     """
-    all_data = []
-    errors = []
+    url_results = {}
     success_count = 0
+    error_count = 0
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_url = {executor.submit(fetch_gold_data, url): url for url in set(urls)}
 
         for future in as_completed(future_to_url):
             url = future_to_url[future]
+            date_match = re.search(r'(\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4}|\d{4}/\d{2}/\d{2})', url)
+            date_str = date_match.group(1) if date_match else ''
+
             try:
                 data = future.result()
                 if data:
-                    all_data.extend(data)
+                    url_results[url] = {'date': date_str, 'rows': data, 'has_data': True}
                     success_count += 1
                 else:
-                    errors.append(f"{url}: không có dữ liệu")
+                    url_results[url] = {
+                        'date': date_str,
+                        'rows': [{'Ngày Dữ Liệu': date_str, 'Ghi chú': f'Không tìm thấy dữ liệu trong ngày {date_str}'}],
+                        'has_data': False
+                    }
+                    error_count += 1
             except Exception as e:
-                # Chỉ ghi nhận lỗi này, không làm tô toàn bộ batch thất bại
-                errors.append(f"{url}: {str(e)}")
+                url_results[url] = {
+                    'date': date_str,
+                    'rows': [{'Ngày Dữ Liệu': date_str, 'Ghi chú': f'Không tìm thấy dữ liệu trong ngày {date_str}'}],
+                    'has_data': False
+                }
+                error_count += 1
+
+    # Sắp xếp theo ngày
+    sorted_urls = sorted(url_results.keys(), key=lambda u: url_results[u]['date'])
+
+    # Lấy toàn bộ tên cột từ các hàng có dữ liệu thực (để tạo separator đúng cột)
+    all_keys = []
+    for url in sorted_urls:
+        if url_results[url]['has_data']:
+            for row in url_results[url]['rows']:
+                for k in row.keys():
+                    if k not in all_keys:
+                        all_keys.append(k)
+
+    all_data = []
+    for i, url in enumerate(sorted_urls):
+        result = url_results[url]
+        all_data.extend(result['rows'])
+
+        # Chèn hàng ngăn cách sau mỗi ngày có dữ liệu (trừ ngày cuối cùng)
+        if result['date'] and result['has_data'] and i < len(sorted_urls) - 1:
+            separator = {k: '―' * 10 for k in all_keys}
+            separator['Ngày Dữ Liệu'] = f'── Hết ngày {result["date"]} ──'
+            separator['Ghi chú'] = ''
+            all_data.append(separator)
 
     return {
         'data': all_data,
         'success_count': success_count,
-        'error_count': len(errors),
-        'errors': errors   # danh sách URL lỗi / không có dữ liệu
+        'error_count': error_count,
+        'errors': []
     }
+
 
 @app.route('/')
 def index():
@@ -235,9 +271,6 @@ def preview():
 
 @app.route('/api/download', methods=['POST'])
 def download():
-    """
-    API tải xuống file CSV
-    """
     try:
         data = request.get_json()
         url_input = data.get('url', '')
