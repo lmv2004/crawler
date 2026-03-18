@@ -84,7 +84,7 @@ def parse_html_data(content, url):
         
         return data
     
-    # Parse bảng đầu tiên có dữ liệu
+    # Parse tất cả các bảng
     for table in tables:
         rows = table.find_all('tr')
         
@@ -94,55 +94,96 @@ def parse_html_data(content, url):
         # Lấy headers
         headers = []
         header_row = rows[0]
+        
+        # Xử lý headers
         for th in header_row.find_all(['th', 'td']):
             header_text = th.get_text(strip=True)
-            headers.append(header_text if header_text else f'Cột_{len(headers)+1}')
+            cs = int(th.get('colspan', 1))
+            for _ in range(cs):
+                headers.append(header_text if header_text else f'Cột_{len(headers)+1}')
         
         if not headers:
             continue
-        
+            
+        rowspan_data = {}
         # Lấy dữ liệu
         for row in rows[1:]:
             cols = row.find_all(['td', 'th'])
-            if len(cols) > 0:
-                row_data = {}
-                for i, col in enumerate(cols):
-                    header = headers[i] if i < len(headers) else f'Cột_{i+1}'
-                    row_data[header] = col.get_text(strip=True)
+            if len(cols) == 0 and len(rowspan_data) == 0:
+                continue
+                
+            row_data = {}
+            col_idx = 0
+            col_element_idx = 0
+            
+            while col_element_idx < len(cols) or col_idx in rowspan_data:
+                if col_idx in rowspan_data and rowspan_data[col_idx]['span'] > 0:
+                    header = headers[col_idx] if col_idx < len(headers) else f'Cột_{col_idx+1}'
+                    row_data[header] = rowspan_data[col_idx]['text']
+                    rowspan_data[col_idx]['span'] -= 1
+                    col_idx += 1
+                elif col_element_idx < len(cols):
+                    col = cols[col_element_idx]
+                    text = col.get_text(strip=True)
+                    rs = int(col.get('rowspan', 1))
+                    cs = int(col.get('colspan', 1))
+                    
+                    header = headers[col_idx] if col_idx < len(headers) else f'Cột_{col_idx+1}'
+                    row_data[header] = text
+                    
+                    if rs > 1:
+                        for i in range(cs):
+                            rowspan_data[col_idx + i] = {'span': rs - 1, 'text': text}
+                            
+                    col_idx += cs
+                    col_element_idx += 1
+                else:
+                    break
+            
+            if row_data:
+                date_match = re.search(r'(\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4}|\d{4}/\d{2}/\d{2})', url)
+                if date_match:
+                    row_data['Ngày Dữ Liệu'] = date_match.group(1)
+                row_data['URL_Nguồn'] = url
                 data.append(row_data)
-        
-        if data:
-            break
     
-    # Thêm timestamp
+    # Thêm timestamp cào dữ liệu
     for item in data:
-        item['thoi_gian'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        item['Thời Gian Cào DL'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
     return data
 
-def fetch_multiple_urls(urls, max_workers=5):
+def fetch_multiple_urls(urls, max_workers=20):
     """
-    Fetch dữ liệu từ nhiều URL cùng lúc sử dụng ThreadPoolExecutor
+    Fetch dữ liệu từ nhiều URL cùng lúc sử dụng ThreadPoolExecutor.
+    Bỏ qua các URL không có dữ liệu (ngày nghỉ, thiếu data) thay vì báo lỗi.
     """
     all_data = []
     errors = []
-    
+    success_count = 0
+
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_url = {executor.submit(fetch_gold_data, url): url for url in set(urls)}
-        
+
         for future in as_completed(future_to_url):
             url = future_to_url[future]
             try:
                 data = future.result()
                 if data:
                     all_data.extend(data)
+                    success_count += 1
+                else:
+                    errors.append(f"{url}: không có dữ liệu")
             except Exception as e:
-                errors.append(f"Lỗi khi tải {url}: {str(e)}")
-                
-    if not all_data and errors:
-        raise Exception(" | ".join(errors))
-        
-    return all_data
+                # Chỉ ghi nhận lỗi này, không làm tô toàn bộ batch thất bại
+                errors.append(f"{url}: {str(e)}")
+
+    return {
+        'data': all_data,
+        'success_count': success_count,
+        'error_count': len(errors),
+        'errors': errors   # danh sách URL lỗi / không có dữ liệu
+    }
 
 @app.route('/')
 def index():
@@ -168,12 +209,25 @@ def preview():
         if not urls:
             return jsonify({'success': False, 'error': 'URL không được để trống'}), 400
         
-        gold_data = fetch_multiple_urls(urls)
+        result = fetch_multiple_urls(urls)
+        gold_data = result['data']
         
+        if not gold_data:
+            err_sample = "; ".join(result['errors'][:3])
+            return jsonify({
+                'success': False,
+                'error': f"Không tìm thấy dữ liệu trên tất cả {len(urls)} URL. Có thể trang web không có dữ liệu cho ngày này hoặc cấu trúc trang đã thay đổi. Chi tiết: {err_sample}"
+            }), 404
+
+        summary = f"✓ Tìm thấy {len(gold_data)} dòng từ {result['success_count']}/{len(urls)} URL"
+        if result['error_count'] > 0:
+            summary += f" ({result['error_count']} ngày không có dữ liệu, bỏ qua)"
+
         return jsonify({
             'success': True,
-            'data': gold_data[:50],  # Giới hạn 50 dòng để preview
-            'total': len(gold_data)
+            'data': gold_data[:50],
+            'total': len(gold_data),
+            'summary': summary
         })
         
     except Exception as e:
@@ -198,10 +252,15 @@ def download():
         if not urls:
             return jsonify({'success': False, 'error': 'URL không được để trống'}), 400
         
-        gold_data = fetch_multiple_urls(urls)
-        
+        result = fetch_multiple_urls(urls)
+        gold_data = result['data']
+
         if not gold_data:
-            return jsonify({'success': False, 'error': 'Không có dữ liệu để tải xuống'}), 404
+            err_sample = "; ".join(result['errors'][:3])
+            return jsonify({
+                'success': False,
+                'error': f"Không tìm thấy dữ liệu trên tất cả {len(urls)} URL. Có thể trang không có dữ liệu cho khoảng ngày này. Chi tiết: {err_sample}"
+            }), 404
         
         # Tạo DataFrame và chuyển thành CSV
         df = pd.DataFrame(gold_data)

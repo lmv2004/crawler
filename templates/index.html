@@ -56,7 +56,7 @@
             font-size: 0.95em;
         }
 
-        input[type="text"] {
+        input[type="text"], .date-input {
             width: 100%;
             padding: 14px;
             border: 2px solid #e0e0e0;
@@ -65,7 +65,7 @@
             transition: all 0.3s ease;
         }
 
-        input[type="text"]:focus {
+        input[type="text"]:focus, .date-input:focus {
             outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
@@ -223,15 +223,43 @@
         <p class="subtitle">Nhập URL trang web để lấy dữ liệu giá vàng</p>
 
         <div class="form-group">
-            <label for="url">URL Trang Web:</label>
-            <input type="text" id="url" placeholder="https://example.com/gia-vang" value="">
+            <label for="url">URL Trang Web (Mẫu):</label>
+            <input type="text" id="url" placeholder="https://giavang.org/trong-nuoc/sjc/lich-su/2018-09-07.html" value="" oninput="checkUrlPattern()">
+            <div id="url-warning" style="display:none; margin-top:8px; padding:10px 14px; background:#fff3cd; color:#856404; border:1px solid #ffc107; border-radius:8px; font-size:0.88em;">
+                ⚠️ <strong>URL này không chứa pattern ngày</strong> (dạng <code>YYYY-MM-DD</code> hoặc <code>DD-MM-YYYY</code>).<br>
+                → Khoảng thời gian đã chọn <strong>sẽ bị bỏ qua</strong>, chỉ cào dữ liệu <strong>1 lần</strong> từ URL này.<br>
+                💡 Để cào theo nhiều ngày, hãy dùng URL có ngày trong đường dẫn, ví dụ:<br>
+                <code style="word-break:break-all;">https://giavang.org/trong-nuoc/sjc/lich-su/<b>2025-03-18</b>.html</code>
+            </div>
+        </div>
+
+        <div class="form-group" style="display: flex; gap: 15px;">
+            <div style="flex: 1;">
+                <label for="start_date">Từ ngày:</label>
+                <input type="date" id="start_date" class="date-input" onchange="updateCountBadge()">
+            </div>
+            <div style="flex: 1;">
+                <label for="end_date">Đến ngày:</label>
+                <input type="date" id="end_date" class="date-input" onchange="updateCountBadge()">
+            </div>
+        </div>
+
+        <div style="display:flex; gap:8px; margin-top:-15px; margin-bottom:20px; flex-wrap:wrap; align-items:center;">
+            <button type="button" onclick="setQuickRange(7)"  style="flex:none;padding:6px 14px;font-size:0.82em;background:#e9ecef;color:#333;border:1px solid #ced4da;border-radius:20px;cursor:pointer;font-weight:500;text-transform:none;letter-spacing:0;">7 ngày</button>
+            <button type="button" onclick="setQuickRange(30)" style="flex:none;padding:6px 14px;font-size:0.82em;background:#e9ecef;color:#333;border:1px solid #ced4da;border-radius:20px;cursor:pointer;font-weight:500;text-transform:none;letter-spacing:0;">1 tháng</button>
+            <button type="button" onclick="setQuickRange(90)" style="flex:none;padding:6px 14px;font-size:0.82em;background:#e9ecef;color:#333;border:1px solid #ced4da;border-radius:20px;cursor:pointer;font-weight:500;text-transform:none;letter-spacing:0;">3 tháng</button>
+            <button type="button" onclick="setQuickRange(180)"style="flex:none;padding:6px 14px;font-size:0.82em;background:#e9ecef;color:#333;border:1px solid #ced4da;border-radius:20px;cursor:pointer;font-weight:500;text-transform:none;letter-spacing:0;">6 tháng</button>
+            <button type="button" onclick="setQuickRange(365)"style="flex:none;padding:6px 14px;font-size:0.82em;background:#e9ecef;color:#333;border:1px solid #ced4da;border-radius:20px;cursor:pointer;font-weight:500;text-transform:none;letter-spacing:0;">1 năm</button>
+            <span id="url-count-badge" style="display:none;margin-left:auto;padding:6px 14px;font-size:0.82em;background:#d4edda;color:#155724;border:1px solid #c3e6cb;border-radius:20px;font-weight:600;"></span>
         </div>
 
         <div class="example-urls">
-            <strong>Ví dụ URL:</strong>
-            <a href="#" onclick="setURL('https://sjc.com.vn/xml/tygiavang.xml'); return false;">SJC - XML</a>
-            <a href="#" onclick="setURL('https://giavang.doji.vn/'); return false;">DOJI</a>
-            <a href="#" onclick="setURL('https://www.pnj.com.vn/blog/gia-vang/'); return false;">PNJ</a>
+            <strong>✅ URL có ngày (hỗ trợ cào theo khoảng thời gian):</strong>
+            <a href="#" onclick="setURL('https://giavang.org/trong-nuoc/sjc/lich-su/2025-03-18.html'); checkUrlPattern(); return false;">giavang.org - SJC lịch sử (có ngày trong URL)</a>
+            <strong style="margin-top:8px; display:block;">⚠️ URL không có ngày (chỉ cào được 1 lần, dữ liệu hiện tại):</strong>
+            <a href="#" onclick="setURL('https://sjc.com.vn/xml/tygiavang.xml'); checkUrlPattern(); return false;">SJC - XML (hiện tại)</a>
+            <a href="#" onclick="setURL('https://giavang.doji.vn/'); checkUrlPattern(); return false;">DOJI (hiện tại)</a>
+            <a href="#" onclick="setURL('https://www.pnj.com.vn/blog/gia-vang/'); checkUrlPattern(); return false;">PNJ (hiện tại)</a>
         </div>
 
         <div class="button-group">
@@ -254,6 +282,50 @@
             document.getElementById('url').value = url;
         }
 
+        function hasDatePattern(url) {
+            return /\d{4}-\d{2}-\d{2}/.test(url) ||
+                   /\d{2}-\d{2}-\d{4}/.test(url) ||
+                   /\d{4}\/\d{2}\/\d{2}/.test(url) ||
+                   url.includes('giavang.org/trong-nuoc/sjc/lich-su');
+        }
+
+        function checkUrlPattern() {
+            const url = document.getElementById('url').value.trim();
+            const warning = document.getElementById('url-warning');
+            if (url && !hasDatePattern(url)) {
+                warning.style.display = 'block';
+            } else {
+                warning.style.display = 'none';
+            }
+            updateCountBadge();
+        }
+
+        function setQuickRange(days) {
+            const end = new Date();
+            const start = new Date();
+            start.setDate(end.getDate() - days + 1);
+            document.getElementById('end_date').value = end.toISOString().split('T')[0];
+            document.getElementById('start_date').value = start.toISOString().split('T')[0];
+            updateCountBadge();
+        }
+
+        function updateCountBadge() {
+            const badge = document.getElementById('url-count-badge');
+            const url = document.getElementById('url').value.trim();
+            const s = document.getElementById('start_date').value;
+            const e = document.getElementById('end_date').value;
+            if (!url || !s || !e || !hasDatePattern(url)) {
+                badge.style.display = 'none';
+                return;
+            }
+            const start = new Date(s);
+            const end = new Date(e);
+            if (end < start) { badge.style.display = 'none'; return; }
+            const days = Math.round((end - start) / (1000*60*60*24)) + 1;
+            badge.textContent = `📅 Sẽ cào ${days} ngày (${days} URL)`;
+            badge.style.display = 'inline-block';
+        }
+
         function showLoading(show) {
             document.querySelector('.loading').style.display = show ? 'block' : 'none';
             document.querySelectorAll('button').forEach(btn => btn.disabled = show);
@@ -270,10 +342,98 @@
             }, 5000);
         }
 
-        async function previewData() {
-            const url = document.getElementById('url').value.trim();
+        function generateUrls() {
+            const urlTemplate = document.getElementById('url').value.trim();
+            const startDateStr = document.getElementById('start_date').value;
+            const endDateStr = document.getElementById('end_date').value;
             
-            if (!url) {
+            if (!urlTemplate) {
+                return [];
+            }
+            
+            if (!startDateStr || !endDateStr) {
+                return [urlTemplate];
+            }
+            
+            const startDate = new Date(startDateStr);
+            const endDate = new Date(endDateStr);
+            
+            const fiveYearsInMs = 5 * 365 * 24 * 60 * 60 * 1000;
+            if (endDate - startDate > fiveYearsInMs) {
+                throw new Error("Khoảng thời gian tối đa là 5 năm!");
+            }
+            if (endDate < startDate) {
+                throw new Error("Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu!");
+            }
+            
+            const yyyymmdd = urlTemplate.match(/\d{4}-\d{2}-\d{2}/);
+            const ddmmyyyy = urlTemplate.match(/\d{2}-\d{2}-\d{4}/);
+            const yyyymmdd_slash = urlTemplate.match(/\d{4}\/\d{2}\/\d{2}/);
+            
+            let formatStr = '';
+            if (yyyymmdd) formatStr = 'YYYY-MM-DD';
+            else if (ddmmyyyy) formatStr = 'DD-MM-YYYY';
+            else if (yyyymmdd_slash) formatStr = 'YYYY/MM/DD';
+            
+            let baseTemplate = urlTemplate;
+            let hasDatePattern = (yyyymmdd || ddmmyyyy || yyyymmdd_slash);
+            
+            if (!hasDatePattern) {
+                if (baseTemplate.includes('giavang.org/trong-nuoc/sjc/lich-su')) {
+                    if (baseTemplate.endsWith('/')) {
+                        baseTemplate += 'YYYY-MM-DD.html';
+                    } else if (baseTemplate.endsWith('.html')) {
+                        baseTemplate = baseTemplate.replace('.html', '/YYYY-MM-DD.html');
+                    } else {
+                        baseTemplate += '/YYYY-MM-DD.html';
+                    }
+                    formatStr = 'YYYY-MM-DD';
+                    hasDatePattern = true;
+                } else {
+                    return [urlTemplate]; // Không có pattern ngày và không phải trang mẫu hỗ trợ
+                }
+            }
+            
+            const urls = [];
+            let currentDate = new Date(startDate);
+            while (currentDate <= endDate) {
+                const yyyy = currentDate.getFullYear();
+                const mm = String(currentDate.getMonth() + 1).padStart(2, '0');
+                const dd = String(currentDate.getDate()).padStart(2, '0');
+                
+                let dateStr = '';
+                if (formatStr === 'YYYY-MM-DD') dateStr = `${yyyy}-${mm}-${dd}`;
+                else if (formatStr === 'DD-MM-YYYY') dateStr = `${dd}-${mm}-${yyyy}`;
+                else if (formatStr === 'YYYY/MM/DD') dateStr = `${yyyy}/${mm}/${dd}`;
+                
+                let newUrl = baseTemplate;
+                if (!yyyymmdd && !ddmmyyyy && !yyyymmdd_slash && baseTemplate.includes('YYYY-MM-DD')) {
+                    newUrl = newUrl.replace('YYYY-MM-DD', dateStr);
+                } else if (yyyymmdd) {
+                    newUrl = newUrl.replace(yyyymmdd[0], dateStr);
+                } else if (ddmmyyyy) {
+                    newUrl = newUrl.replace(ddmmyyyy[0], dateStr);
+                } else if (yyyymmdd_slash) {
+                    newUrl = newUrl.replace(yyyymmdd_slash[0], dateStr);
+                }
+                
+                urls.push(newUrl);
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            
+            return urls;
+        }
+
+        async function previewData() {
+            let urls;
+            try {
+                urls = generateUrls();
+            } catch (error) {
+                showResult(`⚠ ${error.message}`, 'error');
+                return;
+            }
+            
+            if (urls.length === 0) {
                 showResult('⚠ Vui lòng nhập URL!', 'error');
                 return;
             }
@@ -287,14 +447,14 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ url: url })
+                    body: JSON.stringify({ url: urls })
                 });
 
                 const data = await response.json();
 
                 if (data.success) {
                     displayPreview(data.data);
-                    showResult(`✓ Tìm thấy ${data.data.length} dòng dữ liệu`, 'success');
+                    showResult(data.summary || `✓ Tìm thấy ${data.total} dòng dữ liệu`, 'success');
                 } else {
                     showResult(`✗ Lỗi: ${data.error}`, 'error');
                 }
@@ -336,9 +496,15 @@
         }
 
         async function downloadCSV() {
-            const url = document.getElementById('url').value.trim();
+            let urls;
+            try {
+                urls = generateUrls();
+            } catch (error) {
+                showResult(`⚠ ${error.message}`, 'error');
+                return;
+            }
             
-            if (!url) {
+            if (urls.length === 0) {
                 showResult('⚠ Vui lòng nhập URL!', 'error');
                 return;
             }
@@ -351,7 +517,7 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ url: url })
+                    body: JSON.stringify({ url: urls })
                 });
 
                 if (response.ok) {
